@@ -1,0 +1,43 @@
+function myFunction() {
+  const templete = DriveApp.getFileById("11rweWR6oo7aqXBC3OpyDO1Y5sGzMCMD0Y7HqpFCZzp8");
+  const destinationFolder = DriveApp.getFolderById("1Q6KG46WXZmC1cuOVkBig1pIguZDIrY5S");
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Primeros Puestos");
+
+  const rows = sheet.getRange("B3:I44").getValues();
+
+  rows.forEach((row, i) => {
+    if (row[0] == '') return;
+
+    // Crear copia del documento
+    const copy = templete.makeCopy(`${row[0]}, ${row[1]}, ${row[2]} diploma`, destinationFolder);
+    const doc = DocumentApp.openById(copy.getId());
+    const bodyDoc = doc.getBody();
+
+    // Reemplazar textos
+    bodyDoc.replaceText('{{Nombre del Estudiante}}', row[2]);
+    bodyDoc.replaceText('{{Grado}}', row[0]);
+    bodyDoc.replaceText('{{Seccion}}', row[1]);
+    bodyDoc.replaceText('{{Puesto}}', row[3]);
+    bodyDoc.replaceText('{{Profesor}}', row[4]);
+
+    doc.saveAndClose();
+
+    // Generar PDF y guardar URL
+    const blob = DriveApp.getFileById(copy.getId()).getAs('application/pdf');
+    const pdf = destinationFolder.createFile(blob);
+    
+    const url = pdf.getUrl();
+    // Se usa i + 3 porque el rango empieza en la fila 3
+    sheet.getRange(i + 3, 9).setValue(url);
+    copy.setTrashed(!Boolean(row[5]));
+    
+    if (Boolean(row[5])) {
+      MailApp.sendEmail({
+        to: 'fernandoponceking@gmail.com',
+        subject: 'hola ' + row[2],
+        attachments: [blob],
+        body: 'hola ' + row[2] + ' te envio tu diploma por tu rendimiento destacado, saludos'
+      });
+    }
+  });
+}
